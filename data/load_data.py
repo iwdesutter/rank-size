@@ -1,5 +1,6 @@
+import csv
 
-def get_states_pops():
+def get_states_pops_demo_am():
   return {
     "ARG": [2960976, 1148305, 894645, 121739, 520647, 470604, 342796, 367099, 119492, 228199, 206848, 201943, 181318, 133741, 110269, 1111811, 641541, 572769, 519707, 509445, 466755, 407506, 346620, 299022, 289142, 257766, 255145, 167078, 153855, 141496, 123672, 114752],
     "BOL": [784976, 767260, 448756, 446189, 201831, 144994, 123327],
@@ -7,3 +8,43 @@ def get_states_pops():
     "CAN": [1017666, 710677, 635395, 616790, 616741, 562564, 524598, 471844, 463388, 341322, 318499, 314398, 313987, 309993, 245173, 234445, 191435, 186058, 179178, 168282, 167517, 158858, 153811, 140525, 129874, 129575, 129344, 129300, 126624, 114670, 114455, 113946, 111359, 107627, 102696, 101677],
     "CHL": [4229970, 350268, 322220, 318898, 282168, 260915, 239340, 236730, 206315, 193755, 173336, 169448, 157083, 152592, 123055, 122399, 119431, 117983, 117206, 110340]
   }
+
+def get_states_pops(file, state_header, pop_header):
+  
+  text = []
+  with open(file, "r", newline="") as csv_file:
+    csv_reader = csv.reader(csv_file)
+
+    counter = 0
+    for line in csv_reader:
+      text.append(line)
+      counter += 1
+  ##    if counter > 1000:
+  ##      break
+
+  header = text.pop(0)
+  indexState = header.index(state_header)
+  indexPop = header.index(pop_header)
+
+  statesDict = {}
+  for row in text:
+    currentState = row[indexState]
+    currentPop = row[indexPop]
+
+    # print(currentState, currentPop)
+
+    # checks current pop, converts to integer
+    if currentPop.isnumeric():
+      currentPop = int(currentPop)
+    else:
+      continue
+
+    # creates/adds country with pops to list
+    if currentState in statesDict:
+      statesDict[currentState].append(currentPop)
+    else:
+      statesDict[currentState] = [currentPop]
+
+    print(currentState, currentPop)
+
+  return statesDict

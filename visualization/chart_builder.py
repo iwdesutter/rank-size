@@ -7,9 +7,9 @@ import pyqtgraph as pg
 import numpy as np
 # from PySide6.QtWidgets import QApplication, QWidget, QCheckBox, QVBoxLayout
 
-plot = pg.plot()
-plot.setLabel("bottom", "Rank Log")
-plot.setLabel("left", "Size Log")
+# plot = pg.plot()
+# plot.setLabel("bottom", "Rank Log")
+# plot.setLabel("left", "Size Log")
 
 def get_scatter(currentData, color):
   return pg.ScatterPlotItem(
