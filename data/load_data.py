@@ -48,3 +48,8 @@ def get_states_pops(file, state_header, pop_header):
     print(currentState, currentPop)
 
   return statesDict
+
+def export_csv(data_lyst, path):
+  with open(path, "w", newline="", encoding="utf-8") as file:
+    writer = csv.writer(file)
+    writer.writerows(data_lyst)
