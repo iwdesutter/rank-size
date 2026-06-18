@@ -14,9 +14,11 @@ import csv
 
 # import pandas as pd
 import pyqtgraph as pg
+from PySide6 import QtCore
 from PySide6.QtWidgets import QApplication, QWidget, QCheckBox, QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget, QTableWidgetItem, QGroupBox, QPushButton, QLineEdit, QLabel, QFileDialog, QTableView, QMainWindow
 # import numpy as np
-# from PySide6.QtCore import Qt, QSortFilterProxyModel, QAbstractTableModel
+from PySide6.QtCore import Qt, QSortFilterProxyModel, QAbstractTableModel
+from PySide6.QtGui import QFont, QColor
 
 
 # PROGRAM SETUP
@@ -27,7 +29,7 @@ if app is None:
     app = QApplication(sys.argv)
 
 window = QWidget()
-window.setWindowTitle("Rank-Size Rule")
+window.setWindowTitle("Rank-Size Ruler")
 
 
 # FULL UI LAYOUT
@@ -82,12 +84,6 @@ line_file_path = QLineEdit()
 layout_file_path.addWidget(button_upload_file)
 layout_file_path.addWidget(line_file_path)
 
-# header box inputs
-# label_line_city_header = QLabel("City Header:")
-# line_city_header = QLineEdit()
-# label_line_city_header.setBuddy(line_city_header)
-# layout_form_header.addRow(label_line_city_header, line_city_header)
-
 label_line_state_header = QLabel("State Header:")
 line_state_header = QLineEdit()
 label_line_state_header.setBuddy(line_state_header)
@@ -98,11 +94,6 @@ line_pop_header = QLineEdit()
 label_line_pop_header.setBuddy(line_pop_header)
 layout_form_header.addRow(label_line_pop_header, line_pop_header)
 
-# side-by-side forms for min/max pop/cities
-# layout_form_pops = QFormLayout()
-# layout_form_cities = QFormLayout()
-# layout_forms_pops_cities.addLayout(layout_form_pops)
-# layout_forms_pops_cities.addLayout(layout_form_cities)
 
 label_line_min_pop = QLabel("Min Pop:")
 line_min_pop = QLineEdit()
@@ -220,11 +211,11 @@ button_export_csv.show()
 
 
 
-table = QTableWidget()
+table = QTableView()
 
 header_lyst = ["", "State", "Reg Slope", "Reg Int", "R2"]
-table.setColumnCount(len(header_lyst))
-table.setHorizontalHeaderLabels(header_lyst)
+# table.setColumnCount(len(header_lyst))
+# table.setHorizontalHeaderLabels(header_lyst)
 
 layout_center.addWidget(plot_widget)
 
@@ -253,6 +244,91 @@ colors = ["#FF0000", "#00FF00", "#0000FF", "#00FFFF", "#FF00FF", "#FFFF00"]
 #    pass
 
 
+
+# CHECKBOX DELEGATES & SEARCHBAR FUNCTIONALITY FROM
+# https://www.pythonguis.com/tutorials/pyside6-widget-search-bar/
+# https://www.pythonguis.com/faq/how-to-create-a-filter-search-bar-for-a-qtablewidget/
+
+def get_delegate_obj(index_row):
+  state_name = data_lyst[index_row + 1][0]
+  scatter = data_objects[state_name][0]
+  trendline = data_objects[state_name][1]
+  return scatter, trendline
+
+class TableModel(QAbstractTableModel):
+
+  def __init__(self, data, checked):
+    super().__init__()
+    self._data = data
+    self._checked = checked
+
+  def data(self, index, role):
+    if role == Qt.ItemDataRole.DisplayRole and index.column() != 0: # only operates on non-checkbox columns
+      value = self._data[index.row()][index.column() - 1]
+      return str(value)
+
+    if role == Qt.ItemDataRole.CheckStateRole and index.column() == 0: # only operates on initial checkbox column
+      checked = self._checked[index.row()][0]
+      if checked:
+        return Qt.CheckState.Checked.value
+      return Qt.CheckState.Unchecked.value
+    
+    # sets weight, color
+
+    if role == Qt.ItemDataRole.FontRole and index.column() == 1:
+      font = QFont()
+      font.setBold(True)
+      return font
+    
+    if role == Qt.ItemDataRole.ForegroundRole:
+      if index.column() == 1:
+        return QColor(colors[index.row() % len(colors)])
+
+  def setData(self, index, value, role):
+    if role == Qt.ItemDataRole.CheckStateRole and index.column() == 0: # only operates on initial checkbox column
+      checked = value == Qt.CheckState.Checked.value
+      self._checked[index.row()][0] = checked
+      self.dataChanged.emit(index, index, [role])
+
+      adjacent_scatter, adjacent_trendline = get_delegate_obj(index.row())
+
+      if checked:
+        print("I am now checked")
+        # adjacent_scatter, adjacent_trendline = get_delegate_obj(index.row())
+        plot_widget.addItem(adjacent_scatter)
+        plot_widget.addItem(adjacent_trendline)
+      else:
+        print("I am now unchecked")
+        plot_widget.removeItem(adjacent_scatter)
+        plot_widget.removeItem(adjacent_trendline)
+
+      return True
+    
+    return False
+
+  def rowCount(self, index):
+    return len(self._data)
+
+  def columnCount(self, index):
+    return len(self._data[0]) + 1
+  
+  # Source - https://stackoverflow.com/a/64288596
+  # Posted by musicamante
+  # Retrieved 2026-06-18, License - CC BY-SA 4.0
+  def headerData(self, section, orientation, role = QtCore.Qt.DisplayRole):
+    if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
+      return header_lyst[section]
+    return super().headerData(section, orientation, role)
+
+  def flags(self, index):
+    return (
+      Qt.ItemFlag.ItemIsSelectable
+      | Qt.ItemFlag.ItemIsEnabled
+      | Qt.ItemFlag.ItemIsUserCheckable
+    )
+
+
+
 def display_data(states_data):
 
   # clears existing scatters/trendlines from chart
@@ -266,7 +342,7 @@ def display_data(states_data):
     for item in objects:
       plot_widget.removeItem(item)
 
-  table.setRowCount(len(states_data))
+  # table.setRowCount(len(states_data))
   global data_lyst
   data_lyst = [header_lyst[1:len(header_lyst)]] # takes header list, excluding first item
 
@@ -286,27 +362,7 @@ def display_data(states_data):
     trendline, slope, intercept = get_trendline(currentData, color)
     plot_widget.addItem(trendline)
 
-    checkbox = QCheckBox()
-    checkbox.setChecked(True)
 
-    currentStateWidget = QLabel("<span style='color:" + color + "; font-weight: bold;'>" + currentState + "</span>")
-    # layout.addWidget(checkbox)
-
-    # adds checkboxes
-    def make_toggle(scatter):
-      def toggle(state):
-          scatter.setVisible(bool(state))
-      return toggle
-
-    checkbox.stateChanged.connect(make_toggle(scatter))
-    checkbox.stateChanged.connect(make_toggle(trendline))
-
-    # adds checkboxes, data to table
-
-    table.setCellWidget(count, 0, checkbox)
-    table.setCellWidget(count, 1, currentStateWidget)
-    table.setItem(count, 2, QTableWidgetItem(str(slope)))
-    table.setItem(count, 3, QTableWidgetItem(str(intercept)))
 
     # bool_show_state = True
     new_lyst = []
@@ -321,14 +377,40 @@ def display_data(states_data):
     # print(currentState, slope, intercept)
     count += 1
 
-    data_objects[currentState] = [scatter, trendline, checkbox]
+    data_objects[currentState] = [scatter, trendline]
   
   print(data_objects)
 
   # column width resizing
-  table.resizeColumnToContents(0)
 
-  # print(data_lyst)
+
+  data_lyst_ex_header = data_lyst[1:len(data_lyst)]
+
+  trues = [] # this code fixes stupid issue where APPARENTLY [True] * 67 or whatever makes multiple references to the same thing...
+  for item in data_lyst_ex_header:
+    trues.append([True])
+
+  model = TableModel(data_lyst_ex_header, trues)
+  proxy_model = QSortFilterProxyModel()
+  proxy_model.setFilterKeyColumn(-1)  # Search all columns.
+  proxy_model.setSourceModel(model)
+
+  print(data_lyst_ex_header)
+
+  # proxy_model.sort(0, Qt.AscendingOrder)
+
+  table.setModel(proxy_model)
+  # table.setHorizontalHeader(header_lyst)
+  table.resizeColumnToContents(0)
+  table.resizeColumnToContents(1)
+
+  searchbar.textChanged.connect(
+    proxy_model.setFilterFixedString
+  )
+
+  table.setDragEnabled(False)
+
+  table.show()
 
 
 window.show()
