@@ -283,24 +283,117 @@ class TableModel(QAbstractTableModel):
     if role == Qt.ItemDataRole.ForegroundRole:
       if index.column() == 1:
         return QColor(colors[index.row() % len(colors)])
+      
+  def checked_states(self):
+    # print(proxy_model)
+    # row = 0
+    # column = 0
+    # proxy_index = proxy_model.index(row, column)
 
-  def setData(self, index, value, role):
+    # value = proxy_model.data(proxy_index, Qt.ItemDataRole.DisplayRole)
+    # checked = proxy_model.data(proxy_index, Qt.ItemDataRole.CheckStateRole)
+    # print(value, checked)
+    # print(proxy_model.rowCount())
+
+    proxy_bools = []
+    for row in range(proxy_model.rowCount()):
+      if proxy_model.data(proxy_model.index(row, 0), Qt.ItemDataRole.CheckStateRole) == 2:
+        currentBool = True
+      else:
+        currentBool = False
+      proxy_bools.append(currentBool)
+
+    # print(proxy_bools)
+    return proxy_bools
+  
+  def set_all_checked_state(self, state):
+    print("!!!!!")
+    print("We're turning them", state)
+
+    changed_rows = []
+    proxy = proxy_model
+
+    # identifies proxy rows in original (full, unsearched) model
+    for proxy_row in range(proxy.rowCount()):
+      source_index = proxy.mapToSource(
+        proxy.index(proxy_row, 0)
+      )
+      
+      self.setData(
+        source_index,
+        state,
+        Qt.ItemDataRole.CheckStateRole,
+        remind = False
+      )
+
+      changed_rows.append(source_index.row())
+
+    # updates checkboxes in table
+    for row in changed_rows:
+      idx = self.index(row, 0)
+      self.dataChanged.emit(
+        idx,
+        idx,
+        [Qt.ItemDataRole.CheckStateRole]
+      )
+    # updates whole table
+    # print(self.index(0, 0))
+    self.dataChanged.emit(
+        self.index(0, 0),
+        self.index(len(self._checked) - 1, 0),
+        [Qt.ItemDataRole.CheckStateRole]
+    )
+
+  def remind_main_checkbox(self):
+    states = self.checked_states()
+    if all(states):
+      checkbox_main.setCheckState(Qt.CheckState.Checked)
+    elif not any(states):
+      checkbox_main.setCheckState(Qt.CheckState.Unchecked)
+    else:
+      checkbox_main.setCheckState(Qt.CheckState.PartiallyChecked)
+
+  def setData(self, index, value, role, remind = True):
     if role == Qt.ItemDataRole.CheckStateRole and index.column() == 0: # only operates on initial checkbox column
-      checked = value == Qt.CheckState.Checked.value
+
+      print("The checkbox has the value", value)
+      if Qt.CheckState.Checked.value == 2:
+        currentCheckValue = True
+      else:
+        currentCheckValue = False
+
+      if value == 2:
+        value = True
+      
+      checked = (value == currentCheckValue)
+      # print(value, currentCheckValue)
       self._checked[index.row()][0] = checked
       self.dataChanged.emit(index, index, [role])
 
       adjacent_scatter, adjacent_trendline = get_delegate_obj(index.row())
 
       if checked:
-        print("I am now checked")
+        # print("I am now checked")
         # adjacent_scatter, adjacent_trendline = get_delegate_obj(index.row())
         plot_widget.addItem(adjacent_scatter)
         plot_widget.addItem(adjacent_trendline)
       else:
-        print("I am now unchecked")
+        # print("I am now unchecked")
         plot_widget.removeItem(adjacent_scatter)
         plot_widget.removeItem(adjacent_trendline)
+
+      # changes state of main checkbox based on states of all checkboxes
+      if remind:
+        print("We ARE running remind!")
+        model.remind_main_checkbox()
+
+      # print(states)
+      # checkbox_main.setCheckState(Qt.CheckState.PartiallyChecked)
+      # self.dataChanged.emit(
+      #   index,
+      #   index,
+      #   [Qt.ItemDataRole.CheckStateRole]
+      # )
 
       return True
     
@@ -326,6 +419,18 @@ class TableModel(QAbstractTableModel):
       | Qt.ItemFlag.ItemIsEnabled
       | Qt.ItemFlag.ItemIsUserCheckable
     )
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -390,14 +495,16 @@ def display_data(states_data):
   for item in data_lyst_ex_header:
     trues.append([True])
 
+  global model
   model = TableModel(data_lyst_ex_header, trues)
+  global proxy_model
   proxy_model = QSortFilterProxyModel()
   proxy_model.setFilterKeyColumn(-1)  # Search all columns.
   proxy_model.setSourceModel(model)
 
   print(data_lyst_ex_header)
 
-  # proxy_model.sort(0, Qt.AscendingOrder)
+  checkbox_main.setCheckState(Qt.CheckState.Checked)
 
   table.setModel(proxy_model)
   # table.setHorizontalHeader(header_lyst)
@@ -409,9 +516,24 @@ def display_data(states_data):
   )
 
   table.setDragEnabled(False)
+  # updates state of main checkbox when view searchbar/view is updated
+  searchbar.textChanged.connect(model.remind_main_checkbox)
 
   table.show()
 
+# changes state of all checkboxes based on state of main checkbox
+def force_checkboxes():
+  state = checkbox_main.isChecked()
+  print(state)
+  # print(state)
+  # print(model)
+  model.set_all_checked_state(state)
+checkbox_main.clicked.connect(force_checkboxes)
+
+def skip_intermediate():
+  if checkbox_main.checkState() == Qt.CheckState.PartiallyChecked:
+    checkbox_main.setCheckState(Qt.CheckState.Checked)
+checkbox_main.clicked.connect(skip_intermediate)
 
 window.show()
 sys.exit(app.exec())
