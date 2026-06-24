@@ -213,7 +213,7 @@ button_export_csv.show()
 
 table = QTableView()
 
-header_lyst = ["", "State", "Reg Slope", "Reg Int", "R2"]
+header_lyst = ["", "State", "Reg Slope", "Reg Int", "R", "R2", "Pattern"]
 # table.setColumnCount(len(header_lyst))
 # table.setHorizontalHeaderLabels(header_lyst)
 
@@ -222,8 +222,8 @@ layout_center.addWidget(plot_widget)
 # layout_center.addWidget(QCheckBox())
 
 
-plot_widget.setLabel("bottom", "Rank Log")
-plot_widget.setLabel("left", "Size Log")
+plot_widget.setLabel("bottom", "Log(Rank)")
+plot_widget.setLabel("left", "Log(Size)")
 
 # FILTER (i.e. checkbox, line filter) LAYOUT & BEHAVIOR
 checkbox_main = QCheckBox("")
@@ -307,8 +307,8 @@ class TableModel(QAbstractTableModel):
     return proxy_bools
   
   def set_all_checked_state(self, state):
-    print("!!!!!")
-    print("We're turning them", state)
+    # print("!!!!!")
+    # print("We're turning them", state)
 
     changed_rows = []
     proxy = proxy_model
@@ -356,7 +356,7 @@ class TableModel(QAbstractTableModel):
   def setData(self, index, value, role, remind = True):
     if role == Qt.ItemDataRole.CheckStateRole and index.column() == 0: # only operates on initial checkbox column
 
-      print("The checkbox has the value", value)
+      # print("The checkbox has the value", value)
       if Qt.CheckState.Checked.value == 2:
         currentCheckValue = True
       else:
@@ -384,7 +384,7 @@ class TableModel(QAbstractTableModel):
 
       # changes state of main checkbox based on states of all checkboxes
       if remind:
-        print("We ARE running remind!")
+        # print("We ARE running remind!")
         model.remind_main_checkbox()
 
       # print(states)
@@ -403,7 +403,7 @@ class TableModel(QAbstractTableModel):
     return len(self._data)
 
   def columnCount(self, index):
-    return len(self._data[0]) + 1
+    return len(header_lyst)
   
   # Source - https://stackoverflow.com/a/64288596
   # Posted by musicamante
@@ -422,17 +422,7 @@ class TableModel(QAbstractTableModel):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
+data_objects = {}
 
 def display_data(states_data):
 
@@ -441,8 +431,8 @@ def display_data(states_data):
   # for item in plot_widget.listDataItems():
   #   plot_widget.removeItem(item)
   # plot_widget.clear()
-  global data_objects
-  data_objects = {}
+  # global data_objects
+  # data_objects = {}
   for state, objects in data_objects.items():
     for item in objects:
       plot_widget.removeItem(item)
@@ -464,7 +454,7 @@ def display_data(states_data):
     #   scatter.setVisible(bool(state))
 
     plot_widget.addItem(scatter)
-    trendline, slope, intercept = get_trendline(currentData, color)
+    trendline, slope, intercept, r, r2, pattern = get_trendline(currentData, color)
     plot_widget.addItem(trendline)
 
 
@@ -477,6 +467,10 @@ def display_data(states_data):
     #   new_lyst.append("Long Country Name")       
     new_lyst.append(float(slope))
     new_lyst.append(float(intercept))
+    new_lyst.append(float(r))
+    new_lyst.append(float(r2))
+    new_lyst.append(str(pattern))
+
     data_lyst.append(new_lyst)
 
     # print(currentState, slope, intercept)
@@ -484,7 +478,7 @@ def display_data(states_data):
 
     data_objects[currentState] = [scatter, trendline]
   
-  print(data_objects)
+  # print(data_objects)
 
   # column width resizing
 
@@ -502,7 +496,7 @@ def display_data(states_data):
   proxy_model.setFilterKeyColumn(-1)  # Search all columns.
   proxy_model.setSourceModel(model)
 
-  print(data_lyst_ex_header)
+  # print(data_lyst_ex_header)
 
   checkbox_main.setCheckState(Qt.CheckState.Checked)
 
@@ -524,7 +518,7 @@ def display_data(states_data):
 # changes state of all checkboxes based on state of main checkbox
 def force_checkboxes():
   state = checkbox_main.isChecked()
-  print(state)
+  # print(state)
   # print(state)
   # print(model)
   model.set_all_checked_state(state)
