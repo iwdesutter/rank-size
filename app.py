@@ -1,24 +1,19 @@
 
 # FIRST-PARTY PROGRAM MODULES
 
-from data.load_data import get_states_pops_demo_am, get_states_pops, export_csv # type: ignore
+from data.load_data import get_states_pops_demo_am, get_states_pops, get_indicators, export_csv, get_full_name_world, get_full_name_usa # type: ignore
 from processing.metrics import refine_states_pops, gen_states_data # type: ignore
 from visualization.chart_builder import get_scatter, get_trendline # type: ignore
 
+import sys
 
 # THIRD-PARTY LIBRARIES
 
-# import math
-import sys
-import csv
-
-# import pandas as pd
 import pyqtgraph as pg
 from PySide6 import QtCore
-from PySide6.QtWidgets import QApplication, QWidget, QCheckBox, QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget, QTableWidgetItem, QGroupBox, QPushButton, QLineEdit, QLabel, QFileDialog, QTableView, QMainWindow
-# import numpy as np
+from PySide6.QtWidgets import QApplication, QWidget, QCheckBox, QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox, QPushButton, QLineEdit, QLabel, QFileDialog, QTableView, QMainWindow, QRadioButton
 from PySide6.QtCore import Qt, QSortFilterProxyModel, QAbstractTableModel
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtGui import QFont, QColor, QIcon
 
 
 # PROGRAM SETUP
@@ -27,6 +22,7 @@ from PySide6.QtGui import QFont, QColor
 app = QApplication.instance()
 if app is None:
     app = QApplication(sys.argv)
+# app.setWindowIcon(QIcon("C:/Users/eatyo/Downloads/rank-size.png"))
 
 window = QWidget()
 window.setWindowTitle("Rank-Size Ruler")
@@ -42,32 +38,56 @@ layout.addLayout(layout_l_sidebar)
 
 layout_button_files = QHBoxLayout()
 layout_file_path = QHBoxLayout() 
+layout_file_path_indicators = QHBoxLayout() 
 layout_form_header = QFormLayout()
-button_build_cities = QPushButton("Build Cities List")
+layout_form_header_indicators = QFormLayout()
+button_build_cities = QPushButton("Build Population List")
+button_build_indicators = QPushButton("Build Indicator List")
 layout_forms_pops_cities = QFormLayout()
+layout_radio_full_names = QHBoxLayout()
+label_radio = QLabel("Full Names:")
+# radio_full_name_none = QRadioButton("None")
+radio_full_name_world = QRadioButton("World")
+radio_full_name_usa = QRadioButton("USA")
+radio_full_name_world.setChecked(True)
 button_calc_viz = QPushButton("Calculate && Visualize")
 layout_file_path_export = QHBoxLayout() 
 
-group_uploading = QGroupBox("Loading Data")
+group_uploading = QGroupBox("Loading Population Data")
+group_indicators = QGroupBox("Loading Indicators Data (Opt.)")
 group_calculation = QGroupBox("Calculation && Visualization")
 group_analysis = QGroupBox("Analysis && Export")
 group_uploading_layout = QVBoxLayout()
+group_indicators_layout = QVBoxLayout()
 group_calculation_layout = QVBoxLayout()
 group_analysis_layout = QVBoxLayout()
 group_uploading.setLayout(group_uploading_layout)
+group_indicators.setLayout(group_indicators_layout)
 group_calculation.setLayout(group_calculation_layout)
 group_analysis.setLayout(group_analysis_layout)
 
 layout_l_sidebar.addLayout(layout_button_files)
 layout_l_sidebar.addWidget(group_uploading)
+layout_l_sidebar.addWidget(group_indicators)
 layout_l_sidebar.addWidget(group_calculation)
 layout_l_sidebar.addWidget(group_analysis)
 
 group_uploading_layout.addLayout(layout_file_path)
 group_uploading_layout.addLayout(layout_form_header)
 group_uploading_layout.addWidget(button_build_cities)
+
+group_indicators_layout.addLayout(layout_file_path_indicators)
+group_indicators_layout.addLayout(layout_form_header_indicators)
+group_indicators_layout.addWidget(button_build_indicators)
+
 group_calculation_layout.addLayout(layout_forms_pops_cities)
+group_calculation_layout.addLayout(layout_radio_full_names)
+layout_radio_full_names.addWidget(label_radio)
+# layout_radio_full_names.addWidget(radio_full_name_none)
+layout_radio_full_names.addWidget(radio_full_name_world)
+layout_radio_full_names.addWidget(radio_full_name_usa)
 group_calculation_layout.addWidget(button_calc_viz)
+
 group_analysis_layout.addLayout(layout_file_path_export)
 
 # LEFT SIDEBAR SUBWIDGETS
@@ -94,6 +114,22 @@ line_pop_header = QLineEdit()
 label_line_pop_header.setBuddy(line_pop_header)
 layout_form_header.addRow(label_line_pop_header, line_pop_header)
 
+# INDICATORS
+button_upload_file_indicators = QPushButton("Upload File")
+line_file_path_indicators = QLineEdit()
+layout_file_path_indicators.addWidget(button_upload_file_indicators)
+layout_file_path_indicators.addWidget(line_file_path_indicators)
+
+label_line_state_header_indicators = QLabel("State Header:")
+line_state_header_indicators = QLineEdit()
+label_line_state_header.setBuddy(line_state_header_indicators)
+layout_form_header_indicators.addRow(label_line_state_header_indicators, line_state_header_indicators)
+
+label_line_pop_header_indicators = QLabel("Indicator Header:")
+line_pop_header_indicators = QLineEdit()
+label_line_pop_header_indicators.setBuddy(line_pop_header_indicators)
+layout_form_header_indicators.addRow(label_line_pop_header_indicators, line_pop_header_indicators)
+
 
 label_line_min_pop = QLabel("Min Pop:")
 line_min_pop = QLineEdit()
@@ -115,6 +151,7 @@ line_max_cities = QLineEdit()
 label_line_max_cities.setBuddy(line_max_cities)
 layout_forms_pops_cities.addRow(label_line_max_cities, line_max_cities)
 
+
 # ANALYSIS & EXPORT
 
 button_export_location = QPushButton("Export Location")
@@ -133,10 +170,13 @@ layout.addLayout(layout_center)
 
 # UI INPUT BEHAVIORS
 line_file_path.setText("C:/Users/eatyo/OneDrive/Desktop/Rank-Size/!testing/WUP2025-F21-DEGURBA-Cities_Pop.csv")
+line_file_path_indicators.setText("C:/Users/eatyo/OneDrive/Desktop/Rank-Size/!testing/HDR25_Composite_indices_complete_time_series.csv")
 
 # line_city_header.setText("City_Name")
 line_state_header.setText("ISO3_Code")
 line_pop_header.setText("2025")
+line_state_header_indicators.setText("iso3")
+line_pop_header_indicators.setText("hdi_2023")
 
 line_min_pop.setText("0")
 line_max_pop.setText("10000000000")
@@ -151,10 +191,14 @@ def do_demo_data_am():
 
 def get_file_data():
   file_dialog = QFileDialog()
-  # layout.addWidget(file_dialog)
   path, filetype = file_dialog.getOpenFileName()
-  print(path)
+  # print(path)
   line_file_path.setText(path)
+def get_file_data_indicators():
+  file_dialog = QFileDialog()
+  path, filetype = file_dialog.getOpenFileName()
+  # print(path)
+  line_file_path_indicators.setText(path)
 
 def get_file_data_export():
   file_dialog = QFileDialog.getExistingDirectory()
@@ -171,10 +215,19 @@ def build_cities():
 
   global states_pops
   states_pops = get_states_pops(path, state_header, pop_header)
+
+def build_indicators():
+  path = line_file_path_indicators.text()
+  state_header = line_state_header_indicators.text()
+  indicator_header = line_pop_header_indicators.text()
+
+  global indicatorsDict
+  indicatorsDict = get_indicators(path, state_header, indicator_header)
+  global dispIndicator
+  dispIndicator = True
   
 def calc_and_viz():
   global states_pops
-  # global states_data
 
   # refines city/pop list based on parameters
   popMin = int(line_min_pop.text())
@@ -192,9 +245,13 @@ button_upload_demo1.show()
 
 button_upload_file.clicked.connect(get_file_data)
 button_upload_file.show()
+button_upload_file_indicators.clicked.connect(get_file_data_indicators)
+button_upload_file_indicators.show()
 
 button_build_cities.clicked.connect(build_cities)
 button_build_cities.show()
+button_build_indicators.clicked.connect(build_indicators)
+button_build_indicators.show()
 
 button_calc_viz.clicked.connect(calc_and_viz)
 button_calc_viz.show()
@@ -213,9 +270,7 @@ button_export_csv.show()
 
 table = QTableView()
 
-header_lyst = ["", "State", "Reg Slope", "Reg Int", "R", "R2", "Pattern"]
-# table.setColumnCount(len(header_lyst))
-# table.setHorizontalHeaderLabels(header_lyst)
+header_lyst = ["", "state", "state_full", "reg slope", "reg int", "R", "R2", "pattern", "indicator"]
 
 layout_center.addWidget(plot_widget)
 
@@ -422,7 +477,14 @@ class TableModel(QAbstractTableModel):
 
 
 
+
+
+# indicatorsDict = get_indicators("C:/Users/eatyo/OneDrive/Desktop/Rank-Size/!testing/HDR25_Composite_indices_complete_time_series.csv", "iso3", "hdi_2023")
+
+
 data_objects = {}
+indicatorsDict = {}
+dispIndicator = False
 
 def display_data(states_data):
 
@@ -436,6 +498,17 @@ def display_data(states_data):
   for state, objects in data_objects.items():
     for item in objects:
       plot_widget.removeItem(item)
+  # data_objects = {}
+
+  # logic for displaying full state names
+  # if radio_full_name_none.isChecked():
+  #   dispStateFull = False
+  dispStateFull = True
+  if radio_full_name_world.isChecked():
+    stateFullDict = get_full_name_world()
+  elif radio_full_name_usa.isChecked():
+    stateFullDict = get_full_name_usa()
+  
 
   # table.setRowCount(len(states_data))
   global data_lyst
@@ -457,19 +530,26 @@ def display_data(states_data):
     trendline, slope, intercept, r, r2, pattern = get_trendline(currentData, color)
     plot_widget.addItem(trendline)
 
+    # logic for displaying development indicators in rightmost column
+    if dispIndicator and (currentState in indicatorsDict):
+      indicator = indicatorsDict[currentState]
+    else:
+      indicator = ""
 
+    if dispStateFull and (currentState in stateFullDict):
+      currentStateFull = stateFullDict[currentState]
+    else:
+      currentStateFull = ""
 
-    # bool_show_state = True
     new_lyst = []
-    # new_lyst.append(True)
     new_lyst.append(currentState)
-    # if bool_show_state:
-    #   new_lyst.append("Long Country Name")       
+    new_lyst.append(currentStateFull)
     new_lyst.append(float(slope))
     new_lyst.append(float(intercept))
     new_lyst.append(float(r))
     new_lyst.append(float(r2))
-    new_lyst.append(str(pattern))
+    new_lyst.append(pattern)
+    new_lyst.append(indicator)
 
     data_lyst.append(new_lyst)
 
@@ -496,6 +576,7 @@ def display_data(states_data):
   proxy_model.setFilterKeyColumn(-1)  # Search all columns.
   proxy_model.setSourceModel(model)
 
+  print(data_lyst)
   # print(data_lyst_ex_header)
 
   checkbox_main.setCheckState(Qt.CheckState.Checked)
