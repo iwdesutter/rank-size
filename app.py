@@ -1,10 +1,11 @@
 
 # FIRST-PARTY PROGRAM MODULES
 
-from data.load_data import get_states_pops_demo_am, get_states_pops, get_indicators, export_csv, get_full_name_world, get_full_name_usa # type: ignore
+from data.load_data import get_states_pops_demo_am, get_states_pops_demo_as, get_states_pops, get_indicators, export_csv, export_cities, get_full_name_world, get_full_name_usa # type: ignore
 from processing.metrics import refine_states_pops, gen_states_data # type: ignore
 from visualization.chart_builder import get_scatter, get_trendline # type: ignore
 
+import os
 import sys
 
 # THIRD-PARTY LIBRARIES
@@ -22,10 +23,20 @@ from PySide6.QtGui import QFont, QColor, QIcon
 app = QApplication.instance()
 if app is None:
     app = QApplication(sys.argv)
-# app.setWindowIcon(QIcon("C:/Users/eatyo/Downloads/rank-size.png"))
-
 window = QWidget()
+location = os.path.dirname(os.path.abspath(__file__))
+
+# FLAVOR
 window.setWindowTitle("Rank-Size Ruler")
+app.setWindowIcon(QIcon(location + "\\icon.png"))
+# Source - https://stackoverflow.com/a/76703981
+# Posted by Alex Zeleznyak, modified by community. See post 'Timeline' for change history
+# Retrieved 2026-06-26, License - CC BY-SA 4.0
+
+import ctypes
+myappid = 'mycompany.myproduct.subproduct.version' 
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+# time.sleep(1)
 
 
 # FULL UI LAYOUT
@@ -41,8 +52,8 @@ layout_file_path = QHBoxLayout()
 layout_file_path_indicators = QHBoxLayout() 
 layout_form_header = QFormLayout()
 layout_form_header_indicators = QFormLayout()
-button_build_cities = QPushButton("Build Population List")
-button_build_indicators = QPushButton("Build Indicator List")
+button_build_cities = QPushButton("Build Population Dictionary")
+button_build_indicators = QPushButton("Build Indicator Dictionary")
 layout_forms_pops_cities = QFormLayout()
 layout_radio_full_names = QHBoxLayout()
 label_radio = QLabel("Full Names:")
@@ -94,7 +105,7 @@ group_analysis_layout.addLayout(layout_file_path_export)
 
 # DEMO upload buttons
 button_upload_demo1 = QPushButton("Demo File (Americas)")
-button_upload_demo2 = QPushButton("Demo File (Other)")
+button_upload_demo2 = QPushButton("Demo File (Asia)")
 layout_button_files.addWidget(button_upload_demo1)
 layout_button_files.addWidget(button_upload_demo2)
 
@@ -161,6 +172,8 @@ layout_file_path_export.addWidget(line_export_location)
 
 button_export_csv = QPushButton("Export Table as CSV")
 group_analysis_layout.addWidget(button_export_csv)
+button_export_csv_cities = QPushButton("Export Population Dictionary")
+group_analysis_layout.addWidget(button_export_csv_cities)
 
 # CENTER LAYOUT
 layout_center = QVBoxLayout()
@@ -169,12 +182,12 @@ layout.addLayout(layout_center)
 
 
 # UI INPUT BEHAVIORS
-line_file_path.setText("C:/Users/eatyo/OneDrive/Desktop/Rank-Size/!testing/WUP2025-F21-DEGURBA-Cities_Pop.csv")
-line_file_path_indicators.setText("C:/Users/eatyo/OneDrive/Desktop/Rank-Size/!testing/HDR25_Composite_indices_complete_time_series.csv")
+# line_file_path.setText("")
+# line_file_path_indicators.setText("")
 
 # line_city_header.setText("City_Name")
 line_state_header.setText("ISO3_Code")
-line_pop_header.setText("2025")
+line_pop_header.setText("2023")
 line_state_header_indicators.setText("iso3")
 line_pop_header_indicators.setText("hdi_2023")
 
@@ -185,7 +198,13 @@ line_max_cities.setText("10000")
 
 def do_demo_data_am():
   # print(line_city_header.text())
+  global states_pops
   states_pops = get_states_pops_demo_am()
+  states_data = gen_states_data(states_pops)
+  display_data(states_data)
+def do_demo_data_as():
+  global states_pops
+  states_pops = get_states_pops_demo_as()
   states_data = gen_states_data(states_pops)
   display_data(states_data)
 
@@ -206,7 +225,7 @@ def get_file_data_export():
   # path, filetype = file_dialog.getOpenFileName()
   path = file_dialog
   print(path)
-  line_export_location.setText(path + "/output.csv")
+  line_export_location.setText(path)
 
 def build_cities():
   path = line_file_path.text()
@@ -242,6 +261,8 @@ def calc_and_viz():
 
 button_upload_demo1.clicked.connect(do_demo_data_am)
 button_upload_demo1.show()
+button_upload_demo2.clicked.connect(do_demo_data_as)
+button_upload_demo2.show()
 
 button_upload_file.clicked.connect(get_file_data)
 button_upload_file.show()
@@ -257,14 +278,19 @@ button_calc_viz.clicked.connect(calc_and_viz)
 button_calc_viz.show()
 
 def export_csv_lyst():
-  path = line_export_location.text()
+  path = line_export_location.text() + "/output.csv"
   return export_csv(data_lyst, path)
+def export_cities_lyst():
+  path = line_export_location.text() + "/states_pops.json"
+  return export_cities(states_pops, path)
 
 button_export_location.clicked.connect(get_file_data_export)
 button_export_location.show()
 
 button_export_csv.clicked.connect(export_csv_lyst)
 button_export_csv.show()
+button_export_csv_cities.clicked.connect(export_cities_lyst)
+button_export_csv_cities.show()
 
 
 
@@ -290,13 +316,11 @@ layout_center_filter.addWidget(searchbar)
 
 searchbar.setPlaceholderText("Type to filter table")
 def update_from_searchbar():
-  print(searchbar.text())
+  # print(searchbar.text())
+  pass
 
 layout_center.addWidget(table)
 colors = ["#FF0000", "#00FF00", "#0000FF", "#00FFFF", "#FF00FF", "#FFFF00"]
-
-# def make_lyst_to_table():
-#    pass
 
 
 
@@ -340,15 +364,6 @@ class TableModel(QAbstractTableModel):
         return QColor(colors[index.row() % len(colors)])
       
   def checked_states(self):
-    # print(proxy_model)
-    # row = 0
-    # column = 0
-    # proxy_index = proxy_model.index(row, column)
-
-    # value = proxy_model.data(proxy_index, Qt.ItemDataRole.DisplayRole)
-    # checked = proxy_model.data(proxy_index, Qt.ItemDataRole.CheckStateRole)
-    # print(value, checked)
-    # print(proxy_model.rowCount())
 
     proxy_bools = []
     for row in range(proxy_model.rowCount()):
@@ -477,10 +492,7 @@ class TableModel(QAbstractTableModel):
 
 
 
-
-
 # indicatorsDict = get_indicators("C:/Users/eatyo/OneDrive/Desktop/Rank-Size/!testing/HDR25_Composite_indices_complete_time_series.csv", "iso3", "hdi_2023")
-
 
 data_objects = {}
 indicatorsDict = {}
@@ -560,9 +572,6 @@ def display_data(states_data):
   
   # print(data_objects)
 
-  # column width resizing
-
-
   data_lyst_ex_header = data_lyst[1:len(data_lyst)]
 
   trues = [] # this code fixes stupid issue where APPARENTLY [True] * 67 or whatever makes multiple references to the same thing...
@@ -583,6 +592,8 @@ def display_data(states_data):
 
   table.setModel(proxy_model)
   # table.setHorizontalHeader(header_lyst)
+
+  # column width resizing
   table.resizeColumnToContents(0)
   table.resizeColumnToContents(1)
 
@@ -599,7 +610,6 @@ def display_data(states_data):
 # changes state of all checkboxes based on state of main checkbox
 def force_checkboxes():
   state = checkbox_main.isChecked()
-  # print(state)
   # print(state)
   # print(model)
   model.set_all_checked_state(state)
