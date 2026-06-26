@@ -224,7 +224,7 @@ def get_file_data_export():
   # layout.addWidget(file_dialog)
   # path, filetype = file_dialog.getOpenFileName()
   path = file_dialog
-  print(path)
+  # print(path)
   line_export_location.setText(path)
 
 def build_cities():
@@ -254,7 +254,7 @@ def calc_and_viz():
   citiesMin = int(line_min_cities.text())
   citiesMax = int(line_max_cities.text())
   states_pops = refine_states_pops(states_pops, popMin, popMax, citiesMin, citiesMax)
-  print(states_pops)
+  # print(states_pops)
 
   states_data = gen_states_data(states_pops)
   display_data(states_data)
@@ -585,7 +585,7 @@ def display_data(states_data):
   proxy_model.setFilterKeyColumn(-1)  # Search all columns.
   proxy_model.setSourceModel(model)
 
-  print(data_lyst)
+  # print(data_lyst)
   # print(data_lyst_ex_header)
 
   checkbox_main.setCheckState(Qt.CheckState.Checked)
